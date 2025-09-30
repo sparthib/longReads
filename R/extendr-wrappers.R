@@ -10,20 +10,13 @@
 #' @useDynLib longReads, .registration = TRUE
 NULL
 
-#' Return string `"Hello world!"` to R.
-
-hello_world <- function() .Call(wrap__hello_world)
-
-#' Return string `"Hello world!"` to R.
-
-add <- function(x, y) .Call(wrap__add, x, y)
-
-#' Return string `"Hello world!"` to R.
-
-analyze_fastq <- function(file_path, min_length, min_avg_qual) .Call(wrap__analyze_fastq, file_path, min_length, min_avg_qual)
-
-#' produces a dataframe of all the reads, min length and GC content under a certain threshold.
-#' @export
+#' Analyze a FASTQ file and return per-read statistics
+#'
+#' # Arguments
+#' * `file_path` - Path to the FASTQ file
+#' * `min_length` - Optional minimum read length filter
+#' * `min_avg_qual` - Optional minimum average Q-score filter
+#' * `min_gc_content` - Optional minimum GC content filter
 analyze_fastq_r <- function(file_path, min_length, min_avg_qual, min_gc_content) .Call(wrap__analyze_fastq_r, file_path, min_length, min_avg_qual, min_gc_content)
 
 

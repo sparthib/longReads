@@ -1,60 +1,41 @@
 use extendr_api::prelude::*;
 use bio::io::fastq;
+use bio::io::fastq::Record;
+use bio::io;
 use std::path::Path;
 
 
-/// Return string `"Hello world!"` to R.
-/// @export
-#[extendr]
-fn hello_world() -> &'static str {
-    "Hello world!"
-}
-#[extendr]
-fn add(x: i32, y: i32) -> i32 {
-    x + y
-}
-#[extendr]
-fn analyze_fastq(file_path: &str, min_length: Option<usize>, min_avg_qual: Option<f32>) -> Robj {
-    let reader = fastq::Reader::from_file(Path::new(file_path));
-    if reader.is_err() {
-        return list!(total_reads = 0, filtered_reads = 0).into_robj();
-    }
-    let reader = reader.unwrap();
-
-    let mut total_reads = 0;
-    let mut filtered_reads = 0;
-
-    for result in reader.records() {
-        if let Ok(record) = result {
-            total_reads += 1;
-
-            let seq_len = record.seq().len();
-            let avg_qual = if !record.qual().is_empty() {
-                let sum: u32 = record.qual().iter().map(|&q| q as u32).sum();
-                sum as f32 / record.qual().len() as f32
-            } else {
-                0.0
-            };
-
-            let length_ok = min_length.map_or(true, |min| seq_len >= min);
-            let qual_ok = min_avg_qual.map_or(true, |min| avg_qual >= min);
-
-            if length_ok && qual_ok {
-                filtered_reads += 1;
-            }
-        }
+fn mean_qscore(record: &Record) -> f64 {
+    if record.qual().is_empty() {
+        return 0.0;
     }
 
-    list!(total_reads, filtered_reads).into_robj()
+    let errors: Vec<f64> = record
+        .qual()
+        .iter()
+        .map(|&q| {
+            let phred = (q as i32 - 33) as f64;
+            10f64.powf(-phred / 10.0)
+        })
+        .collect();
+
+    let mean_error = errors.iter().sum::<f64>() / errors.len() as f64;
+    -10.0 * mean_error.log10()
 }
 
-
+/// Analyze a FASTQ file and return per-read statistics
+///
+/// # Arguments
+/// * `file_path` - Path to the FASTQ file
+/// * `min_length` - Optional minimum read length filter
+/// * `min_avg_qual` - Optional minimum average Q-score filter
+/// * `min_gc_content` - Optional minimum GC content filter
 #[extendr]
 fn analyze_fastq_r(
     file_path: &str,
     min_length: Option<usize>,
     min_avg_qual: Option<f64>,
-    min_gc_content: Option<f64>
+    min_gc_content: Option<f64>,
 ) -> Robj {
     let reader = fastq::Reader::from_file(Path::new(file_path));
     if reader.is_err() {
@@ -78,10 +59,7 @@ fn analyze_fastq_r(
             let seq_len = seq.len();
             if seq_len == 0 { continue; }
 
-            let avg_qual = if !record.qual().is_empty() {
-                let sum: u32 = record.qual().iter().map(|&q| q as u32).sum();
-                sum as f64 / record.qual().len() as f64
-            } else { 0.0 };
+            let avg_qual = mean_qscore(&record);
 
             let gc_count = seq.iter().filter(|&&b| b == b'G' || b == b'g' || b == b'C' || b == b'c').count();
             let gc_content = (gc_count as f64 / seq_len as f64) * 100.0;
@@ -108,14 +86,10 @@ fn analyze_fastq_r(
 }
 
 
-
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod longReads;
-    fn hello_world;
-    fn add;
-    fn analyze_fastq;
     fn analyze_fastq_r;
 }

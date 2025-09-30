@@ -2,10 +2,19 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{analyze_fastq_r}
 \alias{analyze_fastq_r}
-\title{produces a dataframe of all the reads, min length and GC content under a certain threshold.}
+\title{Analyze a FASTQ file and return per-read statistics}
 \usage{
 analyze_fastq_r(file_path, min_length, min_avg_qual, min_gc_content)
 }
 \description{
-produces a dataframe of all the reads, min length and GC content under a certain threshold.
+Analyze a FASTQ file and return per-read statistics
 }
+\section{Arguments}{
+\itemize{
+\item \code{file_path} - Path to the FASTQ file
+\item \code{min_length} - Optional minimum read length filter
+\item \code{min_avg_qual} - Optional minimum average Q-score filter
+\item \code{min_gc_content} - Optional minimum GC content filter
+}
+}
+
